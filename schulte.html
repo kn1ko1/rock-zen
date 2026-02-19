@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitive Arcade: Scan & Match</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --gold: #fbbf24;
+            --text: #f8fafc;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .arcade-wrapper {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            height: 100vh;
+            scroll-behavior: smooth;
+        }
+
+        .game-section {
+            flex: 0 0 100vw;
+            height: 100vh;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .score-board { 
+            font-size: 1.5rem; 
+            margin-bottom: 1rem; 
+            font-weight: 800; 
+            color: var(--accent); 
+            letter-spacing: 2px;
+        }
+
+        /* --- GAME 1: SCHULTE GRID (Observation) --- */
+        .schulte-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            width: 90vw;
+            max-width: 450px;
+        }
+
+        .num-tile {
+            aspect-ratio: 1;
+            background: var(--card);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .num-tile:hover { background: #334155; border-color: var(--accent); }
+        .num-tile.correct { background: var(--accent); color: var(--bg); transform: scale(0.9); cursor: default; }
+        .num-tile.wrong { background: #ef4444; }
+
+        /* --- GAME 2: MEMORY --- */
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 320px;
+        }
+        .tile {
+            aspect-ratio: 1;
+            background: var(--card);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem;
+            transition: 0.3s;
+        }
+        .tile.flipped { background: #334155; }
+        .tile.matched { border: 2px solid var(--accent); opacity: 0.6; }
+
+        .btn {
+            margin-top: 20px;
+            background: none;
+            border: 1px solid var(--accent);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .nav-hint { margin-top: 2rem; opacity: 0.4; font-size: 0.8rem; letter-spacing: 2px; }
+    </style>
+</head>
+<body>
+
+<div class="arcade-wrapper">
+    
+    <section class="game-section">
+        <div class="score-board">NEXT: <span id="next-num">1</span> | TIME: <span id="schulte-timer">0.00</span>s</div>
+        <div class="schulte-grid" id="schulte-grid"></div>
+        <button class="btn" onclick="initSchulte()">Reset Scan</button>
+        <div class="nav-hint">SWIPE RIGHT FOR MEMORY ➔</div>
+    </section>
+
+    <section class="game-section">
+        <div class="score-board">TRIES: <span id="mem-tries">0</span></div>
+        <div class="memory-grid" id="mem-grid"></div>
+        <button class="btn" onclick="initMemory()">Reset Memory</button>
+        <div class="nav-hint">⬅ SWIPE LEFT FOR SCAN</div>
+    </section>
+
+</div>
+
+<script>
+    /* --- SCHULTE GRID LOGIC --- */
+    let currentTarget = 1;
+    let schulteStartTime = null;
+    let schulteTimerId = null;
+
+    function initSchulte() {
+        const grid = document.getElementById('schulte-grid');
+        grid.innerHTML = '';
+        currentTarget = 1;
+        document.getElementById('next-num').innerText = currentTarget;
+        clearInterval(schulteTimerId);
+        document.getElementById('schulte-timer').innerText = "0.00";
+        schulteStartTime = null;
+
+        let nums = Array.from({length: 25}, (_, i) => i + 1);
+        nums.sort(() => Math.random() - 0.5);
+
+        nums.forEach(n => {
+            const div = document.createElement('div');
+            div.className = 'num-tile';
+            div.innerText = n;
+            div.onclick = () => handleSchulteClick(n, div);
+            grid.appendChild(div);
+        });
+    }
+
+    function handleSchulteClick(val, el) {
+        if (!schulteStartTime) {
+            schulteStartTime = Date.now();
+            schulteTimerId = setInterval(() => {
+                const elapsed = (Date.now() - schulteStartTime) / 1000;
+                document.getElementById('schulte-timer').innerText = elapsed.toFixed(2);
+            }, 50);
+        }
+
+        if (val === currentTarget) {
+            el.classList.add('correct');
+            currentTarget++;
+            if (currentTarget > 25) {
+                clearInterval(schulteTimerId);
+                document.getElementById('next-num').innerText = "DONE!";
+            } else {
+                document.getElementById('next-num').innerText = currentTarget;
+            }
+        } else if (!el.classList.contains('correct')) {
+            el.classList.add('wrong');
+            setTimeout(() => el.classList.remove('wrong'), 200);
+        }
+    }
+
+    /* --- MEMORY LOGIC --- */
+    const emojis = ['🍀', '🌙', '🌀', '💎', '🔥', '🍃', '☀️', '⭐'];
+    let memTiles = [...emojis, ...emojis], flipped = [], tries = 0, lock = false;
+
+    function initMemory() {
+        const grid = document.getElementById('mem-grid');
+        grid.innerHTML = ''; flipped = []; tries = 0; lock = false;
+        document.getElementById('mem-tries').innerText = tries;
+        memTiles.sort(() => Math.random() - 0.5);
+        memTiles.forEach(e => {
+            const t = document.createElement('div');
+            t.className = 'tile';
+            t.innerHTML = `<span style="opacity:0">${e}</span>`;
+            t.onclick = () => {
+                if (lock || t.classList.contains('flipped') || t.classList.contains('matched')) return;
+                t.classList.add('flipped');
+                t.firstChild.style.opacity = 1;
+                flipped.push(t);
+                if (flipped.length === 2) {
+                    tries++; document.getElementById('mem-tries').innerText = tries;
+                    lock = true;
+                    if (flipped[0].innerText === flipped[1].innerText) {
+                        flipped.forEach(el => el.classList.add('matched'));
+                        flipped = []; lock = false;
+                    } else {
+                        setTimeout(() => {
+                            flipped.forEach(el => { el.classList.remove('flipped'); el.firstChild.style.opacity = 0; });
+                            flipped = []; lock = false;
+                        }, 600);
+                    }
+                }
+            };
+            grid.appendChild(t);
+        });
+    }
+
+    initSchulte();
+    initMemory();
+</script>
+</body>
+</html>

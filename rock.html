@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPS: GIGA-REFLEX (Compact)</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #f43f5e;
+            --text: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevents accidental scrollbars */
+        }
+
+        .game-container {
+            background: var(--card);
+            padding: 1.5rem 2.5rem; /* Reduced vertical padding */
+            border-radius: 2rem;
+            text-align: center;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+            width: 90vw;
+            max-width: 600px;
+            max-height: 95vh; /* Prevents the box from getting too tall */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        #timer {
+            font-size: 5rem; /* Slightly smaller to save space */
+            font-family: 'Courier New', monospace;
+            color: #fbbf24;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .battle-zone {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+            margin: 1rem 0;
+            border: 3px solid #334155;
+        }
+
+        .hand-display {
+            font-size: 5rem;
+            min-width: 1.2em;
+        }
+
+        #status-text {
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin: 0.5rem 0;
+            height: 1.2em;
+        }
+
+        .choices {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 1rem;
+        }
+
+        .emoji-btn {
+            background: #334155;
+            border: none;
+            font-size: 4rem;
+            padding: 1rem;
+            border-radius: 1.2rem;
+            cursor: pointer;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .emoji-btn:hover:not(:disabled) {
+            background: #475569;
+            transform: scale(1.05);
+        }
+
+        .emoji-btn:active { transform: scale(0.9); }
+
+        .controls {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .ctrl-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+
+        .pause-btn { background: #64748b; color: white; }
+        .reset-btn { background: var(--accent); color: white; }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.98);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 2rem;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div id="pause-overlay" class="overlay">
+        <h1 style="font-size: 3rem; margin-bottom: 1.5rem;">PAUSED</h1>
+        <button class="ctrl-btn" onclick="togglePause()" style="background: var(--primary); width: 160px; height: 50px;">RESUME</button>
+    </div>
+
+    <div class="stats">
+        <span>YOU: <span id="p-score">0</span></span>
+        <span>CPU: <span id="c-score">0</span></span>
+    </div>
+
+    <div id="timer">5.000</div>
+    <div id="status-text">READY?</div>
+
+    <div class="battle-zone">
+        <div id="p-reveal" class="hand-display">❓</div>
+        <div style="font-size: 1.5rem; color: #475569;">VS</div>
+        <div id="c-reveal" class="hand-display">❓</div>
+    </div>
+
+    <div class="choices">
+        <button class="emoji-btn" onclick="makeMove('rock')">✊</button>
+        <button class="emoji-btn" onclick="makeMove('paper')">✋</button>
+        <button class="emoji-btn" onclick="makeMove('scissors')">✌️</button>
+    </div>
+
+    <div class="controls">
+        <button class="ctrl-btn pause-btn" onclick="togglePause()">Pause</button>
+        <button class="ctrl-btn reset-btn" onclick="resetGame()">Reset</button>
+    </div>
+</div>
+
+<script>
+    // Core game state
+    let pScore = 0, cScore = 0, timeLeft = 5000, timerId = null, isPaused = false, gameState = 'waiting', cpuMove = null;
+
+    // Cached UI elements
+    const timerDisplay = document.getElementById('timer'), statusText = document.getElementById('status-text'), cReveal = document.getElementById('c-reveal'), pReveal = document.getElementById('p-reveal');
+
+    // Move-to-emoji map for quick rendering
+    const icons = { rock: '✊', paper: '✋', scissors: '✌️', fail: '❌' };
+
+    // Starts a fresh round with a 5-second countdown
+    function startRound() {
+        gameState = 'waiting'; timeLeft = 5000; cpuMove = null;
+        statusText.innerText = "WAIT..."; statusText.style.color = "#94a3b8";
+        pReveal.innerText = "❓"; cReveal.innerText = "❓";
+        runTimer();
+    }
+
+    // Runs the countdown timer and activates the reflex window in the final second
+    function runTimer() {
+        if (timerId) clearInterval(timerId);
+        timerId = setInterval(() => {
+            if (isPaused) return;
+            timeLeft -= 10;
+            timerDisplay.innerText = (timeLeft / 1000).toFixed(3);
+
+            // CPU reveals a random move once the game enters the active window
+            if (gameState === 'waiting' && timeLeft <= 1000) {
+                gameState = 'active';
+                cpuMove = ['rock', 'paper', 'scissors'][Math.floor(Math.random() * 3)];
+                cReveal.innerText = icons[cpuMove];
+                statusText.innerText = "GO!"; statusText.style.color = "#22c55e";
+            }
+
+            // If player never responds in time, count it as a timeout loss
+            if (timeLeft <= 0) { clearInterval(timerId); handleTimeout(); }
+        }, 10);
+    }
+
+    // Handles player input and resolves round outcome
+    function makeMove(playerMove) {
+        if (isPaused || gameState === 'result') return;
+
+        // Player clicked too early during the waiting phase
+        if (gameState === 'waiting') { statusText.innerText = "TOO EARLY!"; cScore++; finishRound('fail', 'rock'); return; }
+
+        gameState = 'result'; clearInterval(timerId);
+        pReveal.innerText = icons[playerMove];
+
+        // Determine win/lose/draw based on standard Rock-Paper-Scissors rules
+        if (playerMove === cpuMove) { statusText.innerText = "DRAW!"; } 
+        else if ((playerMove === 'rock' && cpuMove === 'scissors') || (playerMove === 'paper' && cpuMove === 'rock') || (playerMove === 'scissors' && cpuMove === 'paper')) {
+            statusText.innerText = "WIN!"; pScore++;
+        } else { statusText.innerText = "LOST!"; cScore++; }
+        updateScores(); setTimeout(startRound, 2000);
+    }
+
+    // Called when player does not move before timer reaches zero
+    function handleTimeout() { gameState = 'result'; statusText.innerText = "TOO SLOW!"; cScore++; pReveal.innerText = "❌"; updateScores(); setTimeout(startRound, 2000); }
+
+    // Generic round finisher used by early-click failures
+    function finishRound(p, c) { gameState = 'result'; clearInterval(timerId); pReveal.innerText = icons[p] || "❓"; updateScores(); setTimeout(startRound, 2000); }
+
+    // Syncs score values to the UI
+    function updateScores() { document.getElementById('p-score').innerText = pScore; document.getElementById('c-score').innerText = cScore; }
+
+    // Toggles pause overlay and timer execution
+    function togglePause() { isPaused = !isPaused; document.getElementById('pause-overlay').style.display = isPaused ? 'flex' : 'none'; if (!isPaused && gameState !== 'result') runTimer(); }
+
+    // Resets scores and restarts the game loop
+    function resetGame() { pScore = 0; cScore = 0; updateScores(); isPaused = false; document.getElementById('pause-overlay').style.display = 'none'; startRound(); }
+
+    // Boot the first round on page load
+    startRound();
+</script>
+</body>
+</html>
