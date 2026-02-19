@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#38bdf8">
+    <meta name="description" content="A collection of cognitive training games: Rock Paper Scissors reflex, Schulte observation, and Memory matching">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Arcade">
+    <link rel="manifest" href="/rock-zen/manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%230f172a' width='180' height='180'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='%2338bdf8' font-family='system-ui'>🎮</text></svg>">
     <title>Cognitive Arcade | Total Focus</title>
     <style>
         :root {
@@ -74,10 +81,10 @@
         .num-tile.error { background: #f43f5e !important; color: #fff !important; }
 
         /* --- MEMORY --- */
-        .mem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; width: 480px; perspective: 1000px; }
+        .mem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; width: 400px; perspective: 1000px; }
         .card { aspect-ratio: 1; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
         .card.flipped { transform: rotateY(180deg); }
-        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; font-size: 2rem; border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.1); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; font-size: 1.6rem; border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.1); }
         .card-front { background: var(--card); }
         .card-back { background: #334155; transform: rotateY(180deg); }
 
@@ -150,9 +157,14 @@
                 if (entry.isIntersecting) startRPS();
                 else clearInterval(rpsTimer);
             }
+            if (entry.target.id === 'schulte-screen') {
+                if (entry.isIntersecting) resumeSchultTimer();
+                else pauseSchultTimer();
+            }
         });
     }, { threshold: 0.6 });
     observer.observe(document.getElementById('rps-screen'));
+    observer.observe(document.getElementById('schulte-screen'));
 
     /* --- 1. REFLEX LOGIC --- */
     let rpsP = 0, rpsC = 0, rpsTime = 5000, rpsActive = false, cpuChoice = null, rpsPaused = false;
@@ -206,14 +218,43 @@
 
     function updateRPS(){ 
         document.getElementById('rps-pscore').innerText = rpsP; 
-        document.getElementById('rps-cscore').innerText = rpsC; 
+        document.getElementById('rps-cscore').innerText = rpsC;
+        
+        // Check for game end conditions: 20 total plays or first to 10
+        let totalPlays = rpsP + rpsC;
+        if (totalPlays >= 20 || rpsP >= 10 || rpsC >= 10) {
+            clearInterval(rpsTimer);
+            let winner = rpsP > rpsC ? "PLAYER WINS!" : rpsC > rpsP ? "CPU WINS!" : "TIED!";
+            document.getElementById('rps-status').innerText = winner;
+            document.getElementById('rps-status').style.color = rpsP > rpsC ? "#22c55e" : rpsC > rpsP ? "#f87171" : "#fbbf24";
+            setTimeout(() => {
+                rpsP = 0; rpsC = 0;
+                updateRPS();
+                startRPS();
+            }, 2000);
+        }
     }
 
     /* --- 2. SCHULTE LOGIC (STRICT MODE) --- */
-    let sTarget = 1, sStart, sInt;
+    let sTarget = 1, sStart, sInt, sPaused = false;
+    
+    function pauseSchultTimer() {
+        if (sInt) {
+            sPaused = true;
+            clearInterval(sInt);
+        }
+    }
+    
+    function resumeSchultTimer() {
+        if (sPaused && sStart) {
+            sPaused = false;
+            sInt = setInterval(() => document.getElementById('schulte-time').innerText = ((Date.now()-sStart)/1000).toFixed(2), 50);
+        }
+    }
+    
     function initSchulte() {
         const g = document.getElementById('schulte-grid'); g.innerHTML = '';
-        sTarget = 1; clearInterval(sInt); document.getElementById('schulte-time').innerText="0.00"; sStart = null;
+        sTarget = 1; clearInterval(sInt); sPaused = false; document.getElementById('schulte-time').innerText="0.00"; sStart = null;
         document.getElementById('schulte-target').innerText = sTarget;
         
         let nums = Array.from({length:25},(_,i)=>i+1).sort(()=>Math.random()-0.5);
@@ -267,6 +308,13 @@
 
     initSchulte();
     initMemory();
+    
+    /* --- SERVICE WORKER --- */
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/rock-zen/sw.js')
+            .then(reg => console.log('Service Worker registered'))
+            .catch(err => console.log('Service Worker registration failed'));
+    }
 </script>
 </body>
 </html>
