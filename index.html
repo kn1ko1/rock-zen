@@ -54,30 +54,30 @@
 
         /* --- RPS --- */
         .battle-zone {
-            display: flex; align-items: center; gap: 30px; background: rgba(0,0,0,0.2);
-            padding: 20px 40px; border-radius: 20px; margin: 10px 0; border: 2px solid #334155;
+            display: flex; align-items: center; gap: 20px; background: rgba(0,0,0,0.2);
+            padding: 15px 30px; border-radius: 20px; margin: 10px 0; border: 2px solid #334155;
         }
-        .hand { font-size: 5rem; }
-        #timer-rps { font-size: 5rem; color: var(--gold); font-family: monospace; }
+        .hand { font-size: 4rem; }
+        #timer-rps { font-size: 4.5rem; color: var(--gold); font-family: monospace; }
         .rps-choices { display: flex; gap: 15px; }
-        .emoji-btn { font-size: 4rem; background: var(--card); border: none; border-radius: 50%; padding: 24px; cursor: pointer; transition: 0.2s; }
+        .emoji-btn { font-size: 3.2rem; background: var(--card); border: none; border-radius: 50%; padding: 18px; cursor: pointer; transition: 0.2s; }
         .emoji-btn:hover { transform: scale(1.1); }
 
         /* --- SCHULTE (NO FEEDBACK MODE) --- */
-        .schulte-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; width: 480px; }
+        .schulte-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 380px; }
         .num-tile { 
             aspect-ratio: 1; background: var(--card); border-radius: 10px; 
             display: flex; justify-content: center; align-items: center; 
-            font-weight: bold; cursor: pointer; font-size: 2.2rem; transition: background 0.1s;
+            font-weight: bold; cursor: pointer; font-size: 1.6rem; transition: background 0.1s;
         }
         /* Only Red flash for errors remains */
         .num-tile.error { background: #f43f5e !important; color: #fff !important; }
 
         /* --- MEMORY --- */
-        .mem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; width: 600px; perspective: 1000px; }
+        .mem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; width: 480px; perspective: 1000px; }
         .card { aspect-ratio: 1; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
         .card.flipped { transform: rotateY(180deg); }
-        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; font-size: 2.7rem; border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.1); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; font-size: 2rem; border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.1); }
         .card-front { background: var(--card); }
         .card-back { background: #334155; transform: rotateY(180deg); }
 
