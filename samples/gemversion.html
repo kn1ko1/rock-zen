@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitive Arcade | Total Focus</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --gold: #fbbf24;
+            --text: #f8fafc;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .arcade-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            height: 100vh;
+            scroll-behavior: smooth;
+        }
+
+        .game-screen {
+            flex: 0 0 100vw;
+            height: 100vh;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .stats {
+            display: flex; gap: 2.5rem; font-size: 1.5rem; font-weight: 800;
+            color: var(--accent); text-transform: uppercase; margin-bottom: 1.2rem;
+        }
+
+        .instruction {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+
+        /* --- RPS --- */
+        .battle-zone {
+            display: flex; align-items: center; gap: 30px; background: rgba(0,0,0,0.2);
+            padding: 20px 40px; border-radius: 20px; margin: 10px 0; border: 2px solid #334155;
+        }
+        .hand { font-size: 5rem; }
+        #timer-rps { font-size: 5rem; color: var(--gold); font-family: monospace; }
+        .rps-choices { display: flex; gap: 15px; }
+        .emoji-btn { font-size: 4rem; background: var(--card); border: none; border-radius: 50%; padding: 24px; cursor: pointer; transition: 0.2s; }
+        .emoji-btn:hover { transform: scale(1.1); }
+
+        /* --- SCHULTE (NO FEEDBACK MODE) --- */
+        .schulte-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; width: 480px; }
+        .num-tile { 
+            aspect-ratio: 1; background: var(--card); border-radius: 10px; 
+            display: flex; justify-content: center; align-items: center; 
+            font-weight: bold; cursor: pointer; font-size: 2.2rem; transition: background 0.1s;
+        }
+        /* Only Red flash for errors remains */
+        .num-tile.error { background: #f43f5e !important; color: #fff !important; }
+
+        /* --- MEMORY --- */
+        .mem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; width: 600px; perspective: 1000px; }
+        .card { aspect-ratio: 1; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
+        .card.flipped { transform: rotateY(180deg); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; font-size: 2.7rem; border-radius: 14px; border: 1.5px solid rgba(255,255,255,0.1); }
+        .card-front { background: var(--card); }
+        .card-back { background: #334155; transform: rotateY(180deg); }
+
+        .btn {
+            background: transparent; border: 2.5px solid var(--accent);
+            color: var(--accent); padding: 18px 40px; border-radius: 14px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 1.2rem;
+        }
+        .btn:hover { background: var(--accent); color: var(--bg); }
+        .nav-hint { position: absolute; bottom: 20px; opacity: 0.3; font-size: 0.8rem; letter-spacing: 2px; }
+
+        #rps-overlay {
+            display:none; position:absolute; inset:0; background:rgba(15,23,42,0.9); z-index:15; 
+            justify-content:center; align-items:center; flex-direction:column;
+        }
+    </style>
+</head>
+<body>
+
+<div class="arcade-container" id="arcade">
+
+    <section class="game-screen" id="rps-screen">
+        <div class="stats">PLAYER: <span id="rps-pscore">0</span> | CPU: <span id="rps-cscore">0</span></div>
+        <div class="instruction">CPU reveals at 1s — watch the center display.</div>
+        
+        <div id="rps-overlay">
+            <h2 style="color:#fbbf24; font-size:3rem; margin-bottom:1.5rem;">PAUSED</h2>
+            <button class="btn" onclick="toggleRpsPause()" style="background:var(--accent); color:white;">Resume</button>
+        </div>
+
+        <div id="timer-rps">5.000</div>
+        <div class="battle-zone">
+            <div><small style="display:block; opacity:0.5; margin-bottom:5px">YOU</small><div id="p-hand" class="hand">❓</div></div>
+            <div style="font-size:1.5rem; opacity:0.3">VS</div>
+            <div><small style="display:block; opacity:0.5; margin-bottom:5px">CPU</small><div id="c-hand" class="hand">❓</div></div>
+        </div>
+        <p id="rps-status" style="font-weight:bold; letter-spacing:2px; height: 1em;">READY?</p>
+        
+        <div class="rps-choices">
+            <button class="emoji-btn" onclick="rpsMove('rock')">✊</button>
+            <button class="emoji-btn" onclick="rpsMove('paper')">✋</button>
+            <button class="emoji-btn" onclick="rpsMove('scissors')">✌️</button>
+        </div>
+        <button class="btn" onclick="toggleRpsPause()" style="margin-top: 3rem; padding: 12px 30px; font-size: 1rem;">Pause Game</button>
+        <div class="nav-hint">SWIPE RIGHT FOR OBSERVATION ➔</div>
+    </section>
+
+    <section class="game-screen" id="schulte-screen">
+        <div class="stats">NEXT: <span id="schulte-target">1</span> | TIME: <span id="schulte-time">0.00</span>s</div>
+        <div class="instruction">Tap tiles in sequence. Keep track with counter above.</div>
+        <div class="schulte-grid" id="schulte-grid"></div>
+        <button class="btn" onclick="initSchulte()" style="margin-top:2.5rem;">Reset Grid</button>
+        <div class="nav-hint">⬅ SWIPE LEFT | SWIPE RIGHT FOR MEMORY ➔</div>
+    </section>
+
+    <section class="game-screen" id="memory-screen">
+        <div class="stats">TRIES: <span id="mem-tries">0</span> | PAIRS: <span id="mem-pairs">0</span>/10</div>
+        <div class="instruction">Focus on spatial location and pattern matching.</div>
+        <div class="mem-grid" id="mem-grid"></div>
+        <button class="btn" onclick="initMemory()" style="margin-top:2.5rem;">Reset Memory</button>
+        <div class="nav-hint">⬅ SWIPE LEFT FOR OBSERVATION</div>
+    </section>
+</div>
+
+<script>
+    /* --- SYSTEM: OBSERVER --- */
+    let rpsTimer;
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.target.id === 'rps-screen') {
+                if (entry.isIntersecting) startRPS();
+                else clearInterval(rpsTimer);
+            }
+        });
+    }, { threshold: 0.6 });
+    observer.observe(document.getElementById('rps-screen'));
+
+    /* --- 1. REFLEX LOGIC --- */
+    let rpsP = 0, rpsC = 0, rpsTime = 5000, rpsActive = false, cpuChoice = null, rpsPaused = false;
+    const rpsIcons = { rock: '✊', paper: '✋', scissors: '✌️', fail: '❌' };
+
+    function startRPS() {
+        clearInterval(rpsTimer);
+        rpsTime = 5000; rpsActive = false; cpuChoice = null; rpsPaused = false;
+        document.getElementById('p-hand').innerText = '❓';
+        document.getElementById('c-hand').innerText = '❓';
+        document.getElementById('rps-status').innerText = "WAITING...";
+        document.getElementById('rps-status').style.color = "white";
+        document.getElementById('rps-overlay').style.display = 'none';
+
+        rpsTimer = setInterval(() => {
+            if (rpsPaused) return;
+            rpsTime -= 10;
+            document.getElementById('timer-rps').innerText = (rpsTime/1000).toFixed(3);
+            
+            if(rpsTime <= 1000 && !rpsActive) { 
+                rpsActive = true; 
+                cpuChoice = ['rock','paper','scissors'][Math.floor(Math.random()*3)];
+                document.getElementById('c-hand').innerText = rpsIcons[cpuChoice];
+                document.getElementById('rps-status').innerText = "MOVE NOW!"; 
+                document.getElementById('rps-status').style.color = "#22c55e";
+            }
+            if(rpsTime <= 0) { 
+                clearInterval(rpsTimer); rpsC++; 
+                document.getElementById('rps-status').innerText = "TOO SLOW!";
+                document.getElementById('p-hand').innerText = '❌';
+                updateRPS(); setTimeout(startRPS, 1500); 
+            }
+        }, 10);
+    }
+
+    function toggleRpsPause() {
+        rpsPaused = !rpsPaused;
+        document.getElementById('rps-overlay').style.display = rpsPaused ? 'flex' : 'none';
+    }
+
+    function rpsMove(m) {
+        if (!rpsActive || rpsPaused) return;
+        clearInterval(rpsTimer);
+        document.getElementById('p-hand').innerText = rpsIcons[m];
+        if(m === cpuChoice) { document.getElementById('rps-status').innerText = "DRAW!"; }
+        else if((m==='rock'&&cpuChoice==='scissors')||(m==='paper'&&cpuChoice==='rock')||(m==='scissors'&&cpuChoice==='paper')){ 
+            rpsP++; document.getElementById('rps-status').innerText = "WIN!";
+        } else { rpsC++; document.getElementById('rps-status').innerText = "LOSE!"; }
+        updateRPS(); setTimeout(startRPS, 1500);
+    }
+
+    function updateRPS(){ 
+        document.getElementById('rps-pscore').innerText = rpsP; 
+        document.getElementById('rps-cscore').innerText = rpsC; 
+    }
+
+    /* --- 2. SCHULTE LOGIC (STRICT MODE) --- */
+    let sTarget = 1, sStart, sInt;
+    function initSchulte() {
+        const g = document.getElementById('schulte-grid'); g.innerHTML = '';
+        sTarget = 1; clearInterval(sInt); document.getElementById('schulte-time').innerText="0.00"; sStart = null;
+        document.getElementById('schulte-target').innerText = sTarget;
+        
+        let nums = Array.from({length:25},(_,i)=>i+1).sort(()=>Math.random()-0.5);
+        nums.forEach(n => {
+            const d = document.createElement('div'); d.className = 'num-tile'; d.innerText = n;
+            d.onclick = () => {
+                if(!sStart) { 
+                    sStart = Date.now(); 
+                    sInt = setInterval(() => document.getElementById('schulte-time').innerText = ((Date.now()-sStart)/1000).toFixed(2), 50); 
+                }
+                if(n === sTarget) { 
+                    sTarget++; 
+                    if(sTarget > 25) {
+                        clearInterval(sInt);
+                        document.getElementById('schulte-target').innerText = "DONE";
+                    } else {
+                        document.getElementById('schulte-target').innerText = sTarget;
+                    }
+                } else {
+                    d.classList.add('error');
+                    setTimeout(() => d.classList.remove('error'), 200);
+                }
+            };
+            g.appendChild(d);
+        });
+    }
+
+    /* --- 3. MEMORY LOGIC --- */
+    const emojis = ['🚀','🪐','☄️','🛰️','🔭','🛸','👾','🌌','🚗','🏍️'];
+    let mFlipped = [], mPairs = 0, mTries = 0, mLock = false;
+    function initMemory() {
+        const g = document.getElementById('mem-grid'); g.innerHTML = ''; mFlipped = []; mPairs = 0; mTries = 0; mLock = false;
+        let cards = [...emojis, ...emojis].sort(()=>Math.random()-0.5);
+        cards.forEach(e => {
+            const c = document.createElement('div'); c.className='card';
+            c.innerHTML = `<div class="card-face card-front"></div><div class="card-face card-back">${e}</div>`;
+            c.onclick = () => {
+                if(mLock || c.classList.contains('flipped')) return;
+                c.classList.add('flipped'); mFlipped.push(c);
+                if(mFlipped.length === 2) {
+                    mTries++; mLock = true;
+                    if(mFlipped[0].innerText === mFlipped[1].innerText) { mPairs++; mFlipped=[]; mLock=false; }
+                    else { setTimeout(()=>{ mFlipped.forEach(x=>x.classList.remove('flipped')); mFlipped=[]; mLock=false; }, 800); }
+                    document.getElementById('mem-tries').innerText = mTries; 
+                    document.getElementById('mem-pairs').innerText = mPairs;
+                }
+            };
+            g.appendChild(c);
+        });
+    }
+
+    initSchulte();
+    initMemory();
+</script>
+</body>
+</html>
