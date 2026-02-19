@@ -99,11 +99,36 @@
             display:none; position:absolute; inset:0; background:rgba(15,23,42,0.9); z-index:15; 
             justify-content:center; align-items:center; flex-direction:column;
         }
+
+        .share-btn {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(5px);
+        }
+
+        .share-btn:hover {
+            background: var(--accent);
+            color: var(--bg);
+        }
     </style>
 </head>
 <body>
 
 <div class="arcade-container" id="arcade">
+
+    <button class="share-btn" onclick="shareArcade()" title="Share this arcade">🔗 SHARE</button>
 
     <section class="game-screen" id="rps-screen">
         <div class="stats">PLAYER: <span id="rps-pscore">0</span> | CPU: <span id="rps-cscore">0</span></div>
@@ -308,6 +333,28 @@
 
     initSchulte();
     initMemory();
+    
+    /* --- SHARE BUTTON --- */
+    async function shareArcade() {
+        const shareData = {
+            title: 'Cognitive Arcade',
+            text: 'I\'m training my brain on the Cognitive Arcade! Can you beat my scores?',
+            url: window.location.href
+        };
+
+        try {
+            if (navigator.share) {
+                // Mobile Native Share
+                await navigator.share(shareData);
+            } else {
+                // Desktop Fallback (Copy to Clipboard)
+                await navigator.clipboard.writeText(window.location.href);
+                alert("Link copied to clipboard! Share it with your friends.");
+            }
+        } catch (err) {
+            console.log("Error sharing:", err);
+        }
+    }
     
     /* --- SERVICE WORKER --- */
     if ('serviceWorker' in navigator) {
