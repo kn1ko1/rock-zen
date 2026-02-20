@@ -77,8 +77,10 @@
             display: flex; justify-content: center; align-items: center; 
             font-weight: bold; cursor: pointer; font-size: 1.6rem; transition: background 0.1s;
         }
-        /* Only Red flash for errors remains */
+        /* Error flash - red */
         .num-tile.error { background: #f43f5e !important; color: #fff !important; }
+        /* Success flash - green */
+        .num-tile.success { background: #22c55e !important; color: #fff !important; }
 
         /* --- MEMORY --- */
         .mem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; width: 400px; perspective: 1000px; }
@@ -132,7 +134,7 @@
 
     <section class="game-screen" id="rps-screen">
         <div class="stats">PLAYER: <span id="rps-pscore">0</span> | CPU: <span id="rps-cscore">0</span></div>
-        <div class="instruction">CPU reveals at 1s — watch the center display.</div>
+        <div class="instruction">Watch the center display - you have 1 second to make your move.</div>
         
         <div id="rps-overlay">
             <h2 style="color:#fbbf24; font-size:3rem; margin-bottom:1.5rem;">PAUSED</h2>
@@ -291,6 +293,10 @@
                     sInt = setInterval(() => document.getElementById('schulte-time').innerText = ((Date.now()-sStart)/1000).toFixed(2), 50); 
                 }
                 if(n === sTarget) { 
+                    // Flash green for correct answer
+                    d.classList.add('success');
+                    setTimeout(() => d.classList.remove('success'), 200);
+                    
                     sTarget++; 
                     if(sTarget > 25) {
                         clearInterval(sInt);
